@@ -33,10 +33,12 @@ if (userStr) {
         document.getElementById('authModal').style.display = 'none';
         // Load data from Firebase
         syncFromFirebase();
+        showDebug('User loaded from localStorage: ' + JSON.stringify(currentUser));
     }
 } else {
     // Show auth modal if not authenticated
     document.getElementById('authModal').style.display = 'flex';
+    showDebug('No user in localStorage, showing auth modal');
 }
 
 
@@ -134,23 +136,21 @@ function continueAsGuest() {
 // Sync data from Firebase when user signs in
 function syncFromFirebase() {
     if (!currentUser || currentUser.uid.startsWith('guest_')) {
-        console.log('No user or guest user, skipping sync');
+        showDebug('No user or guest user, skipping sync');
         return;
     }
     
     const userId = currentUser.uid;
-    console.log('Syncing data for user:', userId);
+    showDebug('Syncing data for user: ' + userId);
     
     // Sync from desktop app's Firebase structure
     database.ref(`users/${userId}/data`).once('value')
         .then((snapshot) => {
-            console.log('Firebase snapshot exists:', snapshot.exists());
-            
+            showDebug('Firebase snapshot exists: ' + snapshot.exists());
             if (snapshot.exists()) {
                 const firebaseData = snapshot.val();
-                console.log('Firebase data:', firebaseData);
-                console.log('Budgets count:', firebaseData.budgets?.length || 0);
-                console.log('Expenses count:', firebaseData.expenses?.length || 0);
+                showDebug('Firebase data: ' + JSON.stringify(firebaseData));
+                alert('Firebase data loaded! Budgets: ' + (firebaseData.budgets?.length || 0) + ', Expenses: ' + (firebaseData.expenses?.length || 0));
                 
                 // Load budgets from desktop app format directly into memory
                 if (firebaseData.budgets && Array.isArray(firebaseData.budgets)) {
@@ -211,49 +211,74 @@ function syncFromFirebase() {
                 
                 // Refresh UI
                 if (typeof updateDashboard === 'function') {
-                    console.log('Calling updateDashboard()');
+                    showDebug('Calling updateDashboard()');
                     updateDashboard();
                 }
                 if (typeof populateMonthDropdown === 'function') {
-                    console.log('Calling populateMonthDropdown()');
+                    showDebug('Calling populateMonthDropdown()');
                     populateMonthDropdown();
                 } else if (typeof window.populateMonthDropdown === 'function') {
+                    showDebug('Calling window.populateMonthDropdown()');
                     window.populateMonthDropdown();
                 }
                 
                 // Force reload transaction table if it exists
                 if (typeof renderTransactionsTable === 'function') {
-                    console.log('Calling renderTransactionsTable()');
+                    showDebug('Calling renderTransactionsTable()');
                     renderTransactionsTable();
                 }
                 
                 // Force update chart
                 if (typeof updateSevenDayChart === 'function') {
-                    console.log('Calling updateSevenDayChart()');
+                    showDebug('Calling updateSevenDayChart()');
                     updateSevenDayChart();
                 }
                 
                 // Update budget overview
                 if (typeof updateBudgetOverview === 'function') {
-                    console.log('Calling updateBudgetOverview()');
+                    showDebug('Calling updateBudgetOverview()');
                     updateBudgetOverview();
                 }
                 
                 // Update summary table
                 if (typeof updateSummaryTable === 'function') {
-                    console.log('Calling updateSummaryTable()');
+                    showDebug('Calling updateSummaryTable()');
                     updateSummaryTable();
                 }
                 
                 // Set up real-time sync after initial load
+                showDebug('Setting up realtime sync');
                 setupRealtimeSync();
             } else {
-                console.log('No data found in Firebase for this user');
+                showDebug('No data found in Firebase for this user');
+                alert('No data found in Firebase for this user!');
             }
         })
         .catch((error) => {
-            console.error("Error syncing from Firebase:", error);
+            showDebug('Error syncing from Firebase: ' + error);
+            alert('Error syncing from Firebase: ' + error);
         });
+// Debug overlay
+function showDebug(msg) {
+    let dbg = document.getElementById('debugOverlay');
+    if (!dbg) {
+        dbg = document.createElement('div');
+        dbg.id = 'debugOverlay';
+        dbg.style.position = 'fixed';
+        dbg.style.bottom = '0';
+        dbg.style.left = '0';
+        dbg.style.width = '100vw';
+        dbg.style.maxHeight = '30vh';
+        dbg.style.overflowY = 'auto';
+        dbg.style.background = 'rgba(0,0,0,0.7)';
+        dbg.style.color = '#fff';
+        dbg.style.fontSize = '14px';
+        dbg.style.zIndex = '99999';
+        dbg.style.pointerEvents = 'none';
+        document.body.appendChild(dbg);
+    }
+    dbg.innerHTML += '<div>' + msg + '</div>';
+}
 }
 
 let firebaseListener = null;
